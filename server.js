@@ -22,7 +22,20 @@ const BASE = 'https://webtopserver.smartschool.co.il/server/api';
 async function login() {
   const resp = await fetch(`${BASE}/user/LoginByUserNameAndPassword`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Origin': 'https://webtop.smartschool.co.il' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Origin': 'https://webtop.smartschool.co.il',
+      'Referer': 'https://webtop.smartschool.co.il/',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'Accept': 'application/json, text/plain, */*',
+      'Accept-Language': 'he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7',
+      'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124"',
+      'sec-ch-ua-mobile': '?0',
+      'sec-ch-ua-platform': '"Windows"',
+      'sec-fetch-dest': 'empty',
+      'sec-fetch-mode': 'cors',
+      'sec-fetch-site': 'same-site',
+    },
     body: JSON.stringify({
       UserName: CONFIG.username,
       Password: CONFIG.password,
@@ -34,8 +47,12 @@ async function login() {
       deviceDataJson: '{"isMobile":false,"isTablet":false,"isDesktop":true}'
     })
   });
+  const body = await resp.json().catch(() => ({}));
+  console.log('Login response status:', resp.status, 'body:', JSON.stringify(body).substring(0, 200));
   const cookies = resp.headers.raw()['set-cookie'];
-  if (!cookies) throw new Error('Login failed - no cookies returned');
+  if (!cookies || cookies.length === 0) {
+    throw new Error(`Login failed - no cookies returned. Status: ${resp.status}. Body: ${JSON.stringify(body).substring(0,100)}`);
+  }
   return cookies.map(c => c.split(';')[0]).join('; ');
 }
 
