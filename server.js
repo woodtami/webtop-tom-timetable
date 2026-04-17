@@ -9,51 +9,18 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const CONFIG = {
-  username: process.env.WEBTOP_USERNAME,
-  password: process.env.WEBTOP_PASSWORD,
   emailTo: process.env.EMAIL_TO || 'woodtami@gmail.com',
   emailFrom: process.env.EMAIL_FROM,
   emailPass: process.env.EMAIL_PASS,
   institutionCode: process.env.INSTITUTION_CODE || '413856',
+  webtopToken: process.env.WEBTOP_TOKEN,
 };
 
 const BASE = 'https://webtopserver.smartschool.co.il/server/api';
 
-async function login() {
-  const resp = await fetch(`${BASE}/user/LoginByUserNameAndPassword`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Origin': 'https://webtop.smartschool.co.il',
-      'Referer': 'https://webtop.smartschool.co.il/',
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      'Accept': 'application/json, text/plain, */*',
-      'Accept-Language': 'he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7',
-      'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124"',
-      'sec-ch-ua-mobile': '?0',
-      'sec-ch-ua-platform': '"Windows"',
-      'sec-fetch-dest': 'empty',
-      'sec-fetch-mode': 'cors',
-      'sec-fetch-site': 'same-site',
-    },
-    body: JSON.stringify({
-      UserName: CONFIG.username,
-      Password: CONFIG.password,
-      RememberMe: true,
-      BiometricLogin: '',
-      Data: '',
-      UniqueId: '',
-      captcha: '',
-      deviceDataJson: '{"isMobile":false,"isTablet":false,"isDesktop":true}'
-    })
-  });
-  const body = await resp.json().catch(() => ({}));
-  console.log('Login response status:', resp.status, 'body:', JSON.stringify(body).substring(0, 200));
-  const cookies = resp.headers.raw()['set-cookie'];
-  if (!cookies || cookies.length === 0) {
-    throw new Error(`Login failed - no cookies returned. Status: ${resp.status}. Body: ${JSON.stringify(body).substring(0,100)}`);
-  }
-  return cookies.map(c => c.split(';')[0]).join('; ');
+function getCookies() {
+  if (!CONFIG.webtopToken) throw new Error('WEBTOP_TOKEN not set in environment variables');
+  return `webToken=${CONFIG.webtopToken}`;
 }
 
 async function getInitData(cookieStr) {
@@ -61,7 +28,12 @@ async function getInitData(cookieStr) {
   today.setHours(12, 0, 0, 0);
   const resp = await fetch(`${BASE}/WeeklyScedule/InitData`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Origin': 'https://webtop.smartschool.co.il', 'Cookie': cookieStr },
+    headers: {
+      'Content-Type': 'application/json',
+      'Origin': 'https://webtop.smartschool.co.il',
+      'Referer': 'https://webtop.smartschool.co.il/',
+      'Cookie': cookieStr
+    },
     body: JSON.stringify({
       ChildId: null, ClassCode: null, ClassNum: null,
       InstitutionCode: null,
@@ -78,7 +50,12 @@ async function getEvents(cookieStr, initData, dateOffset = 0) {
   base.setHours(12, 0, 0, 0);
   const resp = await fetch(`${BASE}/WeeklyScedule/GetEvents`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Origin': 'https://webtop.smartschool.co.il', 'Cookie': cookieStr },
+    headers: {
+      'Content-Type': 'application/json',
+      'Origin': 'https://webtop.smartschool.co.il',
+      'Referer': 'https://webtop.smartschool.co.il/',
+      'Cookie': cookieStr
+    },
     body: JSON.stringify({
       ChildId: initData.childId || null,
       ClassCode: initData.classCode || null,
@@ -97,8 +74,9 @@ async function getEvents(cookieStr, initData, dateOffset = 0) {
 }
 
 async function fetchTimetable(dateOffset = 0) {
-  const cookies = await login();
+  const cookies = getCookies();
   const initData = await getInitData(cookies);
+  console.log('InitData:', JSON.stringify(initData).substring(0, 200));
   const events = await getEvents(cookies, initData, dateOffset);
   return Array.isArray(events) ? events : (events.events || events.data || []);
 }
@@ -109,9 +87,9 @@ function getTodayEvents(events) {
   return events.filter(e => e.date && e.date.startsWith(todayStr));
 }
 
-function formatEventsHtml(events, title) {
+function formatEventsHtml(events) {
   const dayEvents = getTodayEvents(events);
-  if (dayEvents.length === 0) return `<p>No lessons found for today.</p>`;
+  if (dayEvents.length === 0) return '<p>No lessons found for today.</p>';
   const sorted = dayEvents.sort((a, b) => (a.startTime || 0) - (b.startTime || 0));
   const rows = sorted.map(e => {
     const period = e.startTime && e.startTime !== 1 ? `<td style="color:#888;font-size:12px;padding:6px 12px 6px 0">שיעור ${e.startTime}</td>` : '<td></td>';
@@ -149,7 +127,6 @@ async function sendEmail(events) {
   console.log('Email sent successfully');
 }
 
-// API routes
 app.get('/api/timetable', async (req, res) => {
   try {
     const offset = parseInt(req.query.offset) || 0;
@@ -171,8 +148,8 @@ app.get('/api/send-email', async (req, res) => {
   }
 });
 
-// Daily cron — 6:30am Israel time (UTC+3 = 03:30 UTC)
-cron.schedule('30 3 * * 0-4', async () => {
+// Daily email 7:00am Israel time (UTC+3 = 04:00 UTC), Sun-Fri
+cron.schedule('0 4 * * 0-5', async () => {
   console.log('Running scheduled timetable email...');
   try {
     const events = await fetchTimetable(0);
