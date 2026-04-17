@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: webtop-timetable
+    runtime: node
+    buildCommand: npm install
+    startCommand: node server.js
+    plan: free
+    envVars:
+      - key: WEBTOP_USERNAME
+        sync: false
+      - key: WEBTOP_PASSWORD
+        sync: false
+      - key: INSTITUTION_CODE
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: EMAIL_TO
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
