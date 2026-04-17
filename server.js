@@ -14,13 +14,25 @@ const CONFIG = {
   emailPass: process.env.EMAIL_PASS,
   institutionCode: process.env.INSTITUTION_CODE || '413856',
   webtopToken: process.env.WEBTOP_TOKEN,
+  childId: process.env.CHILD_ID || '',
+  classCode: process.env.CLASS_CODE || '',
+  classNum: process.env.CLASS_NUM || '',
 };
 
 const BASE = 'https://webtopserver.smartschool.co.il/server/api';
 
 function getCookies() {
-  if (!CONFIG.webtopToken) throw new Error('WEBTOP_TOKEN not set in environment variables');
-  return `webToken=${CONFIG.webtopToken}`;
+  if (!CONFIG.webtopToken) throw new Error('WEBTOP_TOKEN not set');
+  return `webToken=${decodeURIComponent(CONFIG.webtopToken)}`;
+}
+
+async function safeJson(resp) {
+  const text = await resp.text();
+  try {
+    return JSON.parse(text);
+  } catch(e) {
+    throw new Error(`Server returned non-JSON (status ${resp.status}): ${text.substring(0, 200)}`);
+  }
 }
 
 async function getInitData(cookieStr) {
@@ -32,6 +44,7 @@ async function getInitData(cookieStr) {
       'Content-Type': 'application/json',
       'Origin': 'https://webtop.smartschool.co.il',
       'Referer': 'https://webtop.smartschool.co.il/',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
       'Cookie': cookieStr
     },
     body: JSON.stringify({
@@ -41,7 +54,7 @@ async function getInitData(cookieStr) {
       View: 'weekly', item: '', language: 'he', spaceId: 0, year: today.getFullYear()
     })
   });
-  return await resp.json();
+  return await safeJson(resp);
 }
 
 async function getEvents(cookieStr, initData, dateOffset = 0) {
@@ -54,12 +67,13 @@ async function getEvents(cookieStr, initData, dateOffset = 0) {
       'Content-Type': 'application/json',
       'Origin': 'https://webtop.smartschool.co.il',
       'Referer': 'https://webtop.smartschool.co.il/',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
       'Cookie': cookieStr
     },
     body: JSON.stringify({
-      ChildId: initData.childId || null,
-      ClassCode: initData.classCode || null,
-      ClassNum: initData.classNum || null,
+      ChildId: initData.childId || CONFIG.childId || null,
+      ClassCode: initData.classCode || CONFIG.classCode || null,
+      ClassNum: initData.classNum || CONFIG.classNum || null,
       InstitutionCode: initData.institutionCode || CONFIG.institutionCode,
       SelectedDate: base.toISOString(),
       View: 'weekly',
@@ -70,13 +84,13 @@ async function getEvents(cookieStr, initData, dateOffset = 0) {
       SpaceId: 0
     })
   });
-  return await resp.json();
+  return await safeJson(resp);
 }
 
 async function fetchTimetable(dateOffset = 0) {
   const cookies = getCookies();
   const initData = await getInitData(cookies);
-  console.log('InitData:', JSON.stringify(initData).substring(0, 200));
+  console.log('InitData result:', JSON.stringify(initData).substring(0, 300));
   const events = await getEvents(cookies, initData, dateOffset);
   return Array.isArray(events) ? events : (events.events || events.data || []);
 }
@@ -133,7 +147,7 @@ app.get('/api/timetable', async (req, res) => {
     const events = await fetchTimetable(offset);
     res.json({ success: true, events });
   } catch (e) {
-    console.error(e);
+    console.error('Timetable error:', e.message);
     res.status(500).json({ success: false, error: e.message });
   }
 });
