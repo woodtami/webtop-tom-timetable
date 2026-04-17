@@ -23,7 +23,7 @@ const BASE = 'https://webtopserver.smartschool.co.il/server/api';
 
 function getCookies() {
   if (!CONFIG.webtopToken) throw new Error('WEBTOP_TOKEN not set');
-  return `webToken=${decodeURIComponent(CONFIG.webtopToken)}`;
+  return `webToken=${CONFIG.webtopToken}`;
 }
 
 async function safeJson(resp) {
