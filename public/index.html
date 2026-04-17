@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="מערכת שעות">
+<title>מערכת שעות</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --blue: #185FA5;
+    --blue-light: #E6F1FB;
+    --blue-dark: #0C447C;
+    --text: #1a1a2e;
+    --text-muted: #6b7280;
+    --border: #e5e7eb;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  body {
+    font-family: 'Heebo', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    direction: rtl;
+  }
+
+  .header {
+    background: var(--blue);
+    padding: env(safe-area-inset-top, 0) 0 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-inner {
+    padding: 16px 20px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .header-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: white;
+    letter-spacing: -0.3px;
+  }
+
+  .header-date {
+    font-size: 13px;
+    color: rgba(255,255,255,0.75);
+    font-weight: 400;
+    margin-top: 2px;
+  }
+
+  .header-logo {
+    width: 36px;
+    height: 36px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  .tabs {
+    display: flex;
+    padding: 0 20px 14px;
+    gap: 8px;
+  }
+
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 7px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    color: rgba(255,255,255,0.65);
+    transition: all 0.2s;
+    border: none;
+    background: transparent;
+  }
+
+  .tab.active {
+    background: white;
+    color: var(--blue);
+  }
+
+  .content {
+    padding: 16px 16px 32px;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  .week-nav {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    background: var(--card);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    padding: 10px 16px;
+  }
+
+  .week-nav.visible { display: flex; }
+
+  .week-nav button {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--blue);
+    padding: 4px 8px;
+    border-radius: 8px;
+  }
+
+  .week-nav button:active { background: var(--blue-light); }
+
+  .week-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .day-section { margin-bottom: 20px; }
+
+  .day-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    padding: 0 4px;
+  }
+
+  .day-label.today { color: var(--blue); }
+
+  .lesson-card {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .period-col {
+    min-width: 32px;
+    text-align: center;
+  }
+
+  .period-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: var(--blue-light);
+    color: var(--blue-dark);
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .lesson-info { flex: 1; }
+
+  .lesson-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+  }
+
+  .lesson-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--text-muted);
+  }
+
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-text { font-size: 15px; font-weight: 500; }
+  .empty-sub { font-size: 13px; margin-top: 4px; }
+
+  .loading {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--text-muted);
+  }
+
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 12px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-box {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    padding: 16px;
+    color: #dc2626;
+    font-size: 14px;
+    text-align: center;
+    margin: 16px 0;
+  }
+
+  .refresh-btn {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--blue);
+    color: white;
+    border: none;
+    border-radius: 24px;
+    padding: 12px 28px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: 'Heebo', sans-serif;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(24,95,165,0.4);
+    display: none;
+  }
+
+  .refresh-btn.visible { display: block; }
+
+  .today-banner {
+    background: linear-gradient(135deg, var(--blue) 0%, var(--blue-dark) 100%);
+    border-radius: 16px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .today-banner-icon { font-size: 28px; }
+  .today-banner-text { flex: 1; }
+  .today-banner-day { font-size: 16px; font-weight: 700; }
+  .today-banner-count { font-size: 13px; opacity: 0.8; margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div>
+      <div class="header-title">מערכת שעות</div>
+      <div class="header-date" id="headerDate"></div>
+    </div>
+    <div class="header-logo">📚</div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" id="tabToday" onclick="switchTab('today')">היום</button>
+    <button class="tab" id="tabWeek" onclick="switchTab('week')">השבוע</button>
+  </div>
+</div>
+
+<div class="content">
+  <div class="week-nav" id="weekNav">
+    <button onclick="changeWeek(-1)">→</button>
+    <div class="week-label" id="weekLabel"></div>
+    <button onclick="changeWeek(1)">←</button>
+  </div>
+  <div id="timetableContent"></div>
+</div>
+
+<button class="refresh-btn" id="refreshBtn" onclick="reload()">↻ רענן</button>
+
+<script>
+const DAY_NAMES = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+const MONTH_NAMES = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+
+let currentTab = 'today';
+let currentOffset = 0;
+
+function setHeaderDate() {
+  const d = new Date();
+  document.getElementById('headerDate').textContent = `יום ${DAY_NAMES[d.getDay()]}, ${d.getDate()} ב${MONTH_NAMES[d.getMonth()]}`;
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  currentOffset = 0;
+  document.getElementById('tabToday').classList.toggle('active', tab === 'today');
+  document.getElementById('tabWeek').classList.toggle('active', tab === 'week');
+  const nav = document.getElementById('weekNav');
+  tab === 'week' ? nav.classList.add('visible') : nav.classList.remove('visible');
+  updateWeekLabel();
+  loadTimetable();
+}
+
+function updateWeekLabel() {
+  const base = new Date();
+  base.setDate(base.getDate() + currentOffset * 7);
+  const sun = new Date(base);
+  sun.setDate(base.getDate() - base.getDay());
+  const fri = new Date(sun);
+  fri.setDate(sun.getDate() + 5);
+  document.getElementById('weekLabel').textContent = `${sun.getDate()}/${sun.getMonth()+1} – ${fri.getDate()}/${fri.getMonth()+1}`;
+}
+
+function changeWeek(dir) {
+  currentOffset += dir;
+  updateWeekLabel();
+  loadTimetable();
+}
+
+function reload() {
+  loadTimetable();
+}
+
+function getTodayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function groupByDay(events) {
+  const grouped = {};
+  events.forEach(e => {
+    const key = e.date ? e.date.substring(0, 10) : 'unknown';
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(e);
+  });
+  return grouped;
+}
+
+function renderLesson(e) {
+  const period = e.startTime && e.startTime !== 1
+    ? `<div class="period-col"><div class="period-num">${e.startTime}</div></div>` : `<div class="period-col"></div>`;
+  const title = e.title || '(ללא כותרת)';
+  const desc = e.description ? `<div class="lesson-desc">${e.description.replace(/\\n/g,' ').substring(0,120)}</div>` : '';
+  return `<div class="lesson-card">${period}<div class="lesson-info"><div class="lesson-title">${title}</div>${desc}</div></div>`;
+}
+
+function renderTimetable(events, todayOnly) {
+  const el = document.getElementById('timetableContent');
+  if (!events || events.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🎉</div><div class="empty-text">אין שיעורים</div><div class="empty-sub">לא נמצאו שיעורים בתקופה זו</div></div>`;
+    document.getElementById('refreshBtn').classList.add('visible');
+    return;
+  }
+
+  const todayStr = getTodayStr();
+  const grouped = groupByDay(events);
+  const keys = Object.keys(grouped).sort();
+  const filtered = todayOnly ? keys.filter(k => k === todayStr) : keys.filter(k => {
+    const d = new Date(k);
+    return d.getDay() >= 0 && d.getDay() <= 5;
+  });
+
+  if (filtered.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">😴</div><div class="empty-text">אין שיעורים היום</div><div class="empty-sub">נהנה מהיום החופשי!</div></div>`;
+    document.getElementById('refreshBtn').classList.add('visible');
+    return;
+  }
+
+  let html = '';
+
+  if (todayOnly && filtered.length > 0) {
+    const todayLessons = grouped[todayStr] || [];
+    const sorted = todayLessons.sort((a,b) => (a.startTime||99) - (b.startTime||99));
+    const count = sorted.length;
+    const d = new Date();
+    html += `<div class="today-banner"><div class="today-banner-icon">📅</div><div class="today-banner-text"><div class="today-banner-day">יום ${DAY_NAMES[d.getDay()]}</div><div class="today-banner-count">${count} שיעורים היום</div></div></div>`;
+    sorted.forEach(e => { html += renderLesson(e); });
+  } else {
+    filtered.forEach(k => {
+      const isToday = k === todayStr;
+      const d = new Date(k);
+      const dayStr = `יום ${DAY_NAMES[d.getDay()]} ${d.getDate()}/${d.getMonth()+1}`;
+      html += `<div class="day-section"><div class="day-label ${isToday ? 'today' : ''}">${dayStr}${isToday ? ' — היום' : ''}</div>`;
+      grouped[k].sort((a,b) => (a.startTime||99) - (b.startTime||99)).forEach(e => { html += renderLesson(e); });
+      html += `</div>`;
+    });
+  }
+
+  el.innerHTML = html;
+  document.getElementById('refreshBtn').classList.add('visible');
+}
+
+async function loadTimetable() {
+  const el = document.getElementById('timetableContent');
+  document.getElementById('refreshBtn').classList.remove('visible');
+  el.innerHTML = `<div class="loading"><div class="spinner"></div><div>טוען מערכת שעות...</div></div>`;
+  try {
+    const res = await fetch(`/api/timetable?offset=${currentOffset}`);
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'שגיאה בטעינת הנתונים');
+    renderTimetable(data.events, currentTab === 'today' && currentOffset === 0);
+  } catch(e) {
+    el.innerHTML = `<div class="error-box">שגיאה בטעינת המערכת: ${e.message}</div>`;
+    document.getElementById('refreshBtn').classList.add('visible');
+  }
+}
+
+setHeaderDate();
+updateWeekLabel();
+loadTimetable();
+</script>
+</body>
+</html>
